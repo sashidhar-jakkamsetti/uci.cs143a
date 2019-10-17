@@ -3,7 +3,7 @@
 # gcc is the current compiler
 CC=gcc
 # options being passed to the above comipler
-CFLAGS=-Wall -g -fno-pic
+CFLAGS=-Wall -g -m32 -fno-pic
 
 all: hello
 
