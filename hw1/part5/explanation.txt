@@ -78,13 +78,14 @@ gs             0x63	99
 0xffffd160:	0x0804821c	0xf7fa8000	0x00000000	0x00000000
 ---------------------------------------------------------------------
 We can see that 12 words got pushed into the stack at the beginning of the main. 
+Out of which, from address 0xffffd130 to 0xffffd110 (which is 8 words), memory is 
+reserved for the main function as described in assembly code line 
+"0x08048440 <+6>:	sub    esp,0x20"
+
 Debuging further, we can understand that frame pointer of the main function is 
 0xffffd138. That means 4 bytes before this address is the frame pointer of the 
 before state, from above it is clear that the value is 0x00000000. Correspondingly,
-0x08048470 is the return address after executing main.
-Therefore, from address 0xffffd130 to 0xffffd110 (which is 8 words), memory is 
-reserved for the main function as described in assembly code line 
-"0x08048440 <+6>:	sub    esp,0x20"
+0x08048470 is the return address after executing main. THis is further explained below.
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
 
@@ -179,13 +180,14 @@ State 4: execution of for loop:
 0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
 0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
 ---------------------------------------------------------------------
-We can clearly see that last two words in the first row are getting incremented.
+We can clearly see that last two words (0x00000006 & 0x00000003) in the first row are 
+getting incremented.
 The last one is getting incremented by 1 because it is the index variable i, and 
-the 3rd word is the sum.
+the 3rd word is the cumulative sum.
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
 
-State 5: after the loop:
+State 5: after the loop execution:
 Breakpoint 3, sum (n=100) at main.c:19
 19	    return sum;
 (gdb) x/24x $esp
@@ -200,10 +202,17 @@ the sum is 4950 (0x00001356) and i is 100 (0x00000064).
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
 
-State 6: finally the printf:
+State 6: finally the printf in the main function:
 (gdb) n
 main () at main.c:27
 27	    printf("Hello world, the sum:%ld\n", s);
+(gdb) x/24x $esp
+0xffffd110:	0x00000064	0xffffd1d4	0xffffd1dc	0xf7e139bd
+0xffffd120:	0xf7fa83c4	0x00008000	0x0804847b	0x00001356
+0xffffd130:	0x08048470	0x00000000	0x00000000	0xf7dfb2a3
+0xffffd140:	0x00000001	0xffffd1d4	0xffffd1dc	0xf7fd86b0
+0xffffd150:	0x00000001	0x00000001	0x00000000	0x0804a010
+0xffffd160:	0x0804821c	0xf7fa8000	0x00000000	0x00000000
 (gdb) info reg
 eax            0x1356	4950
 ecx            0x1af1dec0	452058816
@@ -222,8 +231,11 @@ es             0x2b	43
 fs             0x0	0
 gs             0x63	99
 ---------------------------------------------------------------------
+6 words from the stack are popped out including the local variables and return address and
+frame pointer of sum function.
+
 eax has the return value which is 4950(0x1356). 
-esp comes back to the original local variable pointer.
-ebp is back to the main's frame pointer.
+esp came back to the original local variable pointer, that is 0xffffd110
+ebp is back to the main's frame pointer, that is 0xffffd138.
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
