@@ -1,0 +1,229 @@
+State 1: before calling the main:
+(gdb) info reg
+eax            0x0	0
+ecx            0x0	0
+edx            0xf7fa9898	-134571880
+ebx            0xf7fa8000	-134578176
+esp            0xffffd140	0xffffd140
+ebp            0x0	0x0
+esi            0x0	0
+edi            0x0	0
+eip            0xf7dfb2a3	0xf7dfb2a3 <__libc_start_main+243>
+eflags         0x282	[ SF IF ]
+cs             0x23	35
+ss             0x2b	43
+ds             0x2b	43
+es             0x2b	43
+fs             0x0	0
+gs             0x63	99
+(gdb) x/24x $esp
+0xffffd140:	0x00000001	0xffffd1d4	0xffffd1dc	0xf7fd86b0
+0xffffd150:	0x00000001	0x00000001	0x00000000	0x0804a010
+0xffffd160:	0x0804821c	0xf7fa8000	0x00000000	0x00000000
+0xffffd170:	0x00000000	0x5a379ad0	0x1af1dec0	0x00000000
+0xffffd180:	0x00000000	0x00000000	0x00000001	0x08048310
+0xffffd190:	0x00000000	0xf7fefe90	0xf7dfb1b9	0xf7ffcfbc
+---------------------------------------------------------------------
+Here, $esp is at 0xffffd140. 
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+State 2: after running the program and pausing at the beginning of the main:
+(gdb) r
+Starting program: /home/sjakkams/uci.cs143a/hw1/hello 
+
+Breakpoint 1, main () at main.c:26
+26	    s = sum(100);
+Missing separate debuginfos, use: debuginfo-install glibc-2.17-292.el7.i686
+(gdb) disas
+Dump of assembler code for function main:
+   0x0804843a <+0>:	push   ebp
+   0x0804843b <+1>:	mov    ebp,esp
+   0x0804843d <+3>:	and    esp,0xfffffff0
+   0x08048440 <+6>:	sub    esp,0x20
+=> 0x08048443 <+9>:	mov    DWORD PTR [esp],0x64
+   0x0804844a <+16>:	call   0x804840d <sum>
+   0x0804844f <+21>:	mov    DWORD PTR [esp+0x1c],eax
+   0x08048453 <+25>:	mov    eax,DWORD PTR [esp+0x1c]
+   0x08048457 <+29>:	mov    DWORD PTR [esp+0x4],eax
+   0x0804845b <+33>:	mov    DWORD PTR [esp],0x8048504
+   0x08048462 <+40>:	call   0x80482e0 <printf@plt>
+   0x08048467 <+45>:	mov    eax,0x0
+   0x0804846c <+50>:	leave  
+   0x0804846d <+51>:	ret    
+End of assembler dump.
+(gdb) info reg
+eax            0x1	1
+ecx            0x5fd3670d	1607689997
+edx            0xffffd164	-11932
+ebx            0xf7fa8000	-134578176
+esp            0xffffd110	0xffffd110
+ebp            0xffffd138	0xffffd138
+esi            0x0	0
+edi            0x0	0
+eip            0x8048443	0x8048443 <main+9>
+eflags         0x282	[ SF IF ]
+cs             0x23	35
+ss             0x2b	43
+ds             0x2b	43
+es             0x2b	43
+fs             0x0	0
+gs             0x63	99
+(gdb) x/24x $esp
+0xffffd110:	0x00000001	0xffffd1d4	0xffffd1dc	0xf7e139bd
+0xffffd120:	0xf7fa83c4	0x00008000	0x0804847b	0xf7fa8000
+0xffffd130:	0x08048470	0x00000000	0x00000000	0xf7dfb2a3
+0xffffd140:	0x00000001	0xffffd1d4	0xffffd1dc	0xf7fd86b0
+0xffffd150:	0x00000001	0x00000001	0x00000000	0x0804a010
+0xffffd160:	0x0804821c	0xf7fa8000	0x00000000	0x00000000
+---------------------------------------------------------------------
+We can see that 12 words got pushed into the stack at the beginning of the main. 
+Debuging further, we can understand that frame pointer of the main function is 
+0xffffd138. That means 4 bytes before this address is the frame pointer of the 
+before state, from above it is clear that the value is 0x00000000. Correspondingly,
+0x08048470 is the return address after executing main.
+Therefore, from address 0xffffd130 to 0xffffd110 (which is 8 words), memory is 
+reserved for the main function as described in assembly code line 
+"0x08048440 <+6>:	sub    esp,0x20"
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+State 3: after calling sum function:
+(gdb) c
+Continuing.
+
+Breakpoint 2, sum (n=100) at main.c:13
+13	    unsigned long sum = 0;
+(gdb) disas
+Dump of assembler code for function sum:
+   0x0804840d <+0>:	push   ebp
+   0x0804840e <+1>:	mov    ebp,esp
+   0x08048410 <+3>:	sub    esp,0x10
+=> 0x08048413 <+6>:	mov    DWORD PTR [ebp-0x8],0x0
+   0x0804841a <+13>:	mov    DWORD PTR [ebp-0x4],0x0
+   0x08048421 <+20>:	jmp    0x804842d <sum+32>
+   0x08048423 <+22>:	mov    eax,DWORD PTR [ebp-0x4]
+   0x08048426 <+25>:	add    DWORD PTR [ebp-0x8],eax
+   0x08048429 <+28>:	add    DWORD PTR [ebp-0x4],0x1
+   0x0804842d <+32>:	mov    eax,DWORD PTR [ebp-0x4]
+   0x08048430 <+35>:	cmp    eax,DWORD PTR [ebp+0x8]
+   0x08048433 <+38>:	jl     0x8048423 <sum+22>
+   0x08048435 <+40>:	mov    eax,DWORD PTR [ebp-0x8]
+   0x08048438 <+43>:	leave  
+   0x08048439 <+44>:	ret    
+End of assembler dump.
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00000000	0x00ca0000
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+---------------------------------------------------------------------
+Here, until 0xffffd110 is reserved for main.
+So, the next word is the sum function argument which is 0x00000064 (decimal:100)
+located in the 2nd row 3rd column. Then comes, the return address which is 
+0x0804844f, followed by the frame pointer of the main function mentioned 
+earlier which is 0xffffd138.
+
+Accordingly, next 4 words should be allocated for local variables of the 
+sum function, in which first two are for i and sum, which are 4 bytes each.
+The first one is for index variable, i, and the next is for sum.
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+State 4: execution of for loop:
+(gdb) n
+15	    for (i = 0; i < n; i++) {
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00000001	0x00000001
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+(gdb) n
+16	        sum = sum + i;
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00000001	0x00000002
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+(gdb) n
+15	    for (i = 0; i < n; i++) {
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00000003	0x00000002
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+(gdb) n
+16	        sum = sum + i;
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00000003	0x00000003
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+(gdb) n
+15	    for (i = 0; i < n; i++) {
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00000006	0x00000003
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+---------------------------------------------------------------------
+We can clearly see that last two words in the first row are getting incremented.
+The last one is getting incremented by 1 because it is the index variable i, and 
+the 3rd word is the sum.
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+State 5: after the loop:
+Breakpoint 3, sum (n=100) at main.c:19
+19	    return sum;
+(gdb) x/24x $esp
+0xffffd0f8:	0xf7dedd78	0x080482b5	0x00001356	0x00000064
+0xffffd108:	0xffffd138	0x0804844f	0x00000064	0xffffd1d4
+0xffffd118:	0xffffd1dc	0xf7e139bd	0xf7fa83c4	0x00008000
+0xffffd128:	0x0804847b	0xf7fa8000	0x08048470	0x00000000
+0xffffd138:	0x00000000	0xf7dfb2a3	0x00000001	0xffffd1d4
+0xffffd148:	0xffffd1dc	0xf7fd86b0	0x00000001	0x00000001
+---------------------------------------------------------------------
+the sum is 4950 (0x00001356) and i is 100 (0x00000064).
+---------------------------------------------------------------------
+---------------------------------------------------------------------
+
+State 6: finally the printf:
+(gdb) n
+main () at main.c:27
+27	    printf("Hello world, the sum:%ld\n", s);
+(gdb) info reg
+eax            0x1356	4950
+ecx            0x1af1dec0	452058816
+edx            0xffffd164	-11932
+ebx            0xf7fa8000	-134578176
+esp            0xffffd110	0xffffd110
+ebp            0xffffd138	0xffffd138
+esi            0x0	0
+edi            0x0	0
+eip            0x8048453	0x8048453 <main+25>
+eflags         0x246	[ PF ZF IF ]
+cs             0x23	35
+ss             0x2b	43
+ds             0x2b	43
+es             0x2b	43
+fs             0x0	0
+gs             0x63	99
+---------------------------------------------------------------------
+eax has the return value which is 4950(0x1356). 
+esp comes back to the original local variable pointer.
+ebp is back to the main's frame pointer.
+---------------------------------------------------------------------
+---------------------------------------------------------------------
