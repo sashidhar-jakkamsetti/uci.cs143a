@@ -1,0 +1,72 @@
+Snapshot 1: this is for the main function:
+
+Breakpoint 1, main () at main.c:26
+26	    s = sum(100);
+Missing separate debuginfos, use: debuginfo-install glibc-2.17-292.el7.i686
+(gdb) disas
+Dump of assembler code for function main:
+   0x0804843a <+0>:	push   ebp
+    >> saving the frame pointer of the state before program execution.
+   0x0804843b <+1>:	mov    ebp,esp
+    >> saving the current frame pointer of the main.
+   0x0804843d <+3>:	and    esp,0xfffffff0
+   0x08048440 <+6>:	sub    esp,0x20
+    >> allocating 32 bytes for the local variables (by moving the stack pointer by 32 bytes) and other local data in the main.
+=> 0x08048443 <+9>:	mov    DWORD PTR [esp],0x64
+    >> pushing the arguments of the callee (sum function) into the stack, which is 100 here.
+   0x0804844a <+16>:	call   0x804840d <sum>
+    >> calling sum
+   0x0804844f <+21>:	mov    DWORD PTR [esp+0x1c],eax
+    >> saving the return value in address location esp + 28 .
+   0x08048453 <+25>:	mov    eax,DWORD PTR [esp+0x1c]
+   0x08048457 <+29>:	mov    DWORD PTR [esp+0x4],eax 
+   0x0804845b <+33>:	mov    DWORD PTR [esp],0x8048504
+    >> the above three instructions prepare the input argument for printf.
+   0x08048462 <+40>:	call   0x80482e0 <printf@plt>
+    >> calling printf.
+   0x08048467 <+45>:	mov    eax,0x0
+    >> return 0 in the main (by saving 0 in eax).
+   0x0804846c <+50>:	leave
+    >> deallocate the local variables and pop the old frame pointer.
+   0x0804846d <+51>:	ret 
+    >> exit program.
+End of assembler dump.
+---------------------------------------------------------------------
+
+Snapshot 2: this is for the sum function:
+
+Breakpoint 2, sum (n=100) at main.c:13
+13	    unsigned long sum = 0;
+(gdb) disas
+Dump of assembler code for function sum:
+   0x0804840d <+0>:	push   ebp
+    >> saving the frame pointer of the main function.
+   0x0804840e <+1>:	mov    ebp,esp
+    >> saving the current frame pointer of the sum function.
+   0x08048410 <+3>:	sub    esp,0x10
+    >> allocating 16 bytes for the local variables (by moving the stack pointer by 16 bytes), in which first two are for i and sum variables.
+=> 0x08048413 <+6>:	mov    DWORD PTR [ebp-0x8],0x0
+    >> initializing ebp - 8 which is the sum variable to 0.
+   0x0804841a <+13>:	mov    DWORD PTR [ebp-0x4],0x0
+    >> initializing ebp - 4 which is the index variable i to 0.
+   0x08048421 <+20>:	jmp    0x804842d <sum+32>
+    >> unconditional jump to address 0x804842d for checking the loop condition before entering the loop.
+   0x08048423 <+22>:	mov    eax,DWORD PTR [ebp-0x4]
+    >> reading the index variable i value to eax register
+   0x08048426 <+25>:	add    DWORD PTR [ebp-0x8],eax
+    >> performing "sum = sum + i", because we have sum at esp - 8.
+   0x08048429 <+28>:	add    DWORD PTR [ebp-0x4],0x1
+    >> incrementing the index variable i by 1.
+   0x0804842d <+32>:	mov    eax,DWORD PTR [ebp-0x4]
+    >> reading the updated index variable i to eax
+   0x08048430 <+35>:	cmp    eax,DWORD PTR [ebp+0x8]
+    >> checking the loop condition which is "i < n", since we have the function argument n at esp + 8.
+   0x08048433 <+38>:	jl     0x8048423 <sum+22>
+    >> jump if less than to the loop body at 0x8048423, otherwise exit the loop.
+   0x08048435 <+40>:	mov    eax,DWORD PTR [ebp-0x8]
+    >> save the return value to eax register
+   0x08048438 <+43>:	leave 
+    >> deallocate local variables and pop the old frame pointer.
+   0x08048439 <+44>:	ret
+    >> jump back to the return address which is 0x0804844f.
+End of assembler dump.
