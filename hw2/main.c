@@ -50,6 +50,22 @@ struct proghdr
   unsigned int align;
 };
 
+// Program section header
+struct sechdr
+{
+  unsigned int name;
+  unsigned int type;
+  unsigned int flags;
+  unsigned int saddr;
+  unsigned int soff;
+  unsigned int memsz;
+  unsigned int slink;
+  unsigned int sinfo;
+  unsigned int align;
+  unsigned int entsize;
+};
+
+
 // Values for Proghdr type
 #define ELF_PROG_LOAD 1
 
@@ -62,11 +78,14 @@ int main(int argc, char *argv[])
 {
   struct elfhdr elf;
   struct proghdr ph;
+  struct sechdr sh;
   int (*sum)(int a, int b);
   void *entry = NULL;
   void *code_va = NULL;
+  void *buffer = NULL;
+  void *bufferByte = NULL;
   int ret;
-  int i;
+  int i, j, test_byte;
 
   FILE *file = fopen(argv[1], "r");
 
@@ -91,7 +110,41 @@ int main(int argc, char *argv[])
           code_va = mmap(code_va, ph.memsz,
                          PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE,
                          0, 0);
-          fread((void *)code_va, 1, ph.memsz, file);
+          // EXTRA CREDIT
+          buffer = (void*) malloc(ph.memsz);
+          memset(buffer, 0, ph.memsz);
+          fread((void *)buffer, 1, ph.memsz, file);
+          
+          fseek(file, elf.shoff + (3 * sizeof(sh)), SEEK_SET);
+          for(j = 0; j < elf.shnum; j++) {
+            fread(&sh, 1, sizeof(sh), file);
+            printf(".data section header: %d, %d, %d", sh.saddr, sh.soff, sh.memsz);
+          }
+
+          for(j = 0; j < ph.memsz; j++) {
+            memcpy(&test_byte, (void*)(buffer + j), 1);
+            if(test_byte > 137 && test_byte < 141)
+              {
+                j += 2;
+                memcpy(&test_byte, (void*)(buffer + j), 1);
+                if(test_byte > sh.addr && test_byte < sh.addr + sh.memsz) {
+                  test_byte += (unsigned int*)code_va;
+                  memcpy((void*)(buffer + j), &test_byte, 1);
+                }
+              }
+
+            if(test_byte > 160 && test_byte < 164)
+              {
+                j += 1;
+                memcpy(&test_byte, (void*)(buffer + j), 1);
+                if(test_byte > sh.addr && test_byte < sh.addr + sh.memsz) {
+                  test_byte += (unsigned int*)code_va;
+                  memcpy((void*)(buffer + j), &test_byte, 1);
+                }
+              }
+          }
+
+          memcpy((void*)code_va, (void*)buffer, ph.memsz);
           fseek(file, elf.phoff + ((i + 1) * sizeof(ph)), SEEK_SET);
 
           if (code_va != (void *)-1)
