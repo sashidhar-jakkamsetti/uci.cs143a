@@ -85,21 +85,21 @@ int main(int argc, char* argv[]) {
                 fread(&ph, 1, sizeof(ph), file);
                 if(ph.type == ELF_PROG_LOAD) {
 		    printf("step 3: ph offset = %d,%d\n", ph.off, ph.memsz);
-
 		    // 4. Load segment into the memory 
 		    fseek(file, ph.off, SEEK_SET);
                     code_va = mmap(code_va, ph.memsz, 
                         PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 
                         0, 0);
-		    fread(&code_va, 1, ph.memsz, file);
+		    fread((void*)code_va, 1, ph.memsz, file);
 		    
-		    fseek(file, elf.phoff + sizeof(ph), SEEK_SET);
+		    fseek(file, elf.phoff + ((i + 1) * sizeof(ph)), SEEK_SET);
 		    
 		    printf("step 4: code_va = %d\n", code_va);
                     if(code_va != (void*)-1) {
 		      // 5. Jump to the entry point of the program
-                      entry = code_va - 72;
+                      entry = code_va;
 		      printf("step 5: entry = %d\n", entry);
+
                     }
                 }
             }
@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
 
     if (entry != NULL) {
         sum = entry; 
-        ret = sum(1, 2);
+        ret = sum(10, 12);
         printf("sum:%d\n", ret); 
     };
     
