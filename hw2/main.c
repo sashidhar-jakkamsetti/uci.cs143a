@@ -62,9 +62,36 @@ int main(int argc, char* argv[]) {
     struct proghdr ph;
     int (*sum)(int a, int b);
     void *entry = NULL;
+    void *code_va = NULL;
     int ret; 
 
-    /* Add your ELF loading code here */
+    FILE* file = fopen("elf", "rb");
+    
+    if(file) {
+      // 1. Read the ELF header
+      fread(&elf, 1, sizeof(elf), file);
+
+      if(elf.magic == ELF_MAGIC &&
+         elf.elf[0] == 'E' &&
+         elf.elf[1] == 'L' &&
+         elf.elf[2] == 'F' &&
+         elf.type == 0x7f) {
+            // 2. Go the Program Header Table offset
+            fseek(file, elf.phoff - elf.ehsize, SEEK_SET);
+
+            for(int i = 0; i < elf.phnum; i++) {
+                fread(&ph, 1, sizeof(ph), file);
+                if(ph.type == ELF_PROG_LOAD) {
+                    code_va = mmap(code_va, ph.memsz, 
+                        PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE, 
+                        0, 0);
+                    if(code_va != -1) {
+                      entry = code_va + elf.entry;
+                    }
+                }
+            }
+         }
+    }
 
     if (entry != NULL) {
         sum = entry; 
