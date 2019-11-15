@@ -111,6 +111,18 @@ int main(int argc, char *argv[])
                          PROT_READ | PROT_WRITE | PROT_EXEC, MAP_ANONYMOUS | MAP_PRIVATE,
                          0, 0);
           // EXTRA CREDIT
+          /* why it crashes?
+          Ans: It crashes because the kernel looks for the global variable (c) data at 0x4c address
+          which is obviously out of the boundaries of the memory allocated for the program that we 
+          loaded (i.e, which is returned by mmap()). Since, OS does memory isolation it does not allow
+          any access to the memory not allocated for the current process, this causes Segmentation Fault
+          and it crashes. We can fix this by updating the global variable i.e data section reference
+          address according to the memory address returned by mmap(). 
+          I tried to solve this by finding out where the global variables are being called and if found
+          adding an offset of code_va to it.
+          But this is wrong, we should ideally do it by using relocation information.
+          */ 
+
           buffer = (void*) malloc(ph.memsz);
           memset(buffer, 0, ph.memsz);
           fread((void *)buffer, 1, ph.memsz, file);
