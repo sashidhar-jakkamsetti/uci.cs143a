@@ -43,7 +43,6 @@ start:
     mov eax, cr0
     or eax, 1 << 31
     mov cr0, eax
-
     mov esp, stack_top
     call main
 
