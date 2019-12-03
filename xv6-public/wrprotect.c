@@ -5,19 +5,19 @@
 int
 main(void)
 {
-    int size = 1024;
+    int size = 100;
     
-    // Get the initial value
-    //char *paddr = sbrk(0);
-    
-    // Allocte some memory
+    // Allocate some memory
     char *saddr = sbrk(size);
     
     // Call wrprotect to remove write permissions
     wrprotect((void *)saddr, size);
     
     // Should give an error
-    //*paddr = 1;
+    char *paddr = saddr;
+    *paddr = 1;
+    // And continue once the page is made writable
+    printf(1, "Program resumed. paddr has value: %d\n", *paddr);
 
     exit();
 }

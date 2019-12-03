@@ -1,0 +1,65 @@
+Since all the necessary information about the current program causing the interrupt is stored in the kernel stack,
+we can easily extract this information display to the user. xv6 has trapframe to hold all this essential info. In 
+trap.c all this info is passed as trapframe pointer tf. We can use this struct to print a meaningful backtrace.
+
+trap.c: line 96 - 125
+    // Walk through the pd and get the failing address pte
+    pte_t *pte;
+    pte = walkpgdir(myproc()->pgdir, (void *)rcr2(), 0);
+    // Verfiy that page fault caused at this pte is due to page protection
+    if(!(*pte & PTE_W))
+    {
+      // Print the crash info
+      cprintf("is trying to access a write protected page at: 0x%x, ip: 0x%x\n", 
+              rcr2(), tf->eip);
+      // Print backtrace
+      cprintf("program backtrace:\n");
+      cprintf("eax:0x%x\n", tf->eax);
+      cprintf("ebx:0x%x\n", tf->ebx);
+      cprintf("ecx:0x%x\n", tf->ecx);
+      cprintf("edx:0x%x\n", tf->edx);
+      cprintf("esi:0x%x\n", tf->esi);
+      cprintf("edi:0x%x\n", tf->edi);
+      cprintf("esp:0x%x\n", tf->esp);
+      cprintf("eip:0x%x\n", tf->eip);
+      cprintf("ebp:0x%x\n", tf->ebp);
+      
+      // Print the values stored in the stack until the previous function return address
+      char* sprinter = (char *)tf->esp;
+      int i = 0;
+      do
+      {
+        sprinter += 4;
+        cprintf("#%d  0x%x\n", i++, *sprinter);
+      }while(sprinter != ((char *)tf->ebp + 4));
+    }
+
+All the general purpose registers and the other important registers like eip, ebp and esp are present in the 
+trapframe struct.
+For printing the stack values, we have to iterate from esp to ebp + 4 for getting all the local variables, old ebp 
+and the return address. 
+
+Backtrace of my wrprotect program:
+$ wrprotect
+pid 3 wrprotect: trap 14 err 7 on cpu 1 eip 0x28 addr 0x3000--kill proc
+is trying to access a write protected page at: 0x3000, ip: 0x28
+program backtrace:
+eax:0x0
+ebx:0x3000
+ecx:0x1940
+edx:0xbfac
+esi:0x0
+edi:0x0
+esp:0x2fc0
+eip:0x28
+ebp:0x2fdc
+#0  0x64
+#1  0x0
+#2  0x0
+#3  0x0
+#4  0x0
+#5  0xffffffa8
+#6  0xffffffc8
+#7  0xffffffff
+
+The last stack value shows '0xffffffff' implying the beginning of the stack.

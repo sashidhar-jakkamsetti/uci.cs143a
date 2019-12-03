@@ -1,0 +1,54 @@
+wrprotect.c: line 14 - 18
+// Call wrprotect to remove write permissions
+wrprotect((void *)saddr, size);
+    
+// Should give an error
+char *paddr = saddr;
+*paddr = 1; 
+
+When the user program tries to write on a write-protected page, kernel raises a page fault interrupt. 
+Firstly, the stack space is changed from user program to the kernel to handle the interrupt using 
+task segment descriptor. Then the contents of the user program are saved in kernel stack along with the 
+interrupt id (which is 14 here). The old eip and cs registers are pushed into this stack and the new eip 
+and cs registers of the interrupt handler are loaded from the IDT with interrupt id 14 for page fault 
+handling. This interrupt handler will invoke alltraps in the trapasm.S which will invoke the switch case
+in the trap.c. 
+
+trap.c: line 82 - 104
+default:
+    if(myproc() == 0 || (tf->cs&3) == 0){
+      // In kernel, it must be our mistake.
+      cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",
+              tf->trapno, cpuid(), tf->eip, rcr2());
+      panic("trap");
+    }
+    // In user space, assume process misbehaved.
+    cprintf("pid %d %s: trap %d err %d on cpu %d "
+            "eip 0x%x addr 0x%x--kill proc\n",
+            myproc()->pid, myproc()->name, tf->trapno,
+            tf->err, cpuid(), tf->eip, rcr2());
+    
+    // Walk through the pd and get the failing address pte
+    pte_t *pte;
+    pte = walkpgdir(myproc()->pgdir, (void *)rcr2(), 0);
+    // Verfiy that page fault caused at this pte is due to page protection
+    if(!(*pte & PTE_W))
+    {
+      cprintf("is trying to access a write protected page at: 0x%x, ip: 0x%x\n", 
+              rcr2(), tf->eip);
+    }
+
+Comments in the above code specify what exactly is being done to print the crash info.
+
+After the trap function prints the basic debug info, we will walk through the address to find the 
+page table entry which caused the page fault interrupt. If the write flag is not set, then it is due 
+our new system call. Then we just say that the trap is caused because the user is trying to access 
+a write protected page. cr2 register will contain the page faulting linear address, so we can just 
+learn the crash address by calling rcr2() which gives the cr2 value. And tf->eip will have the code 
+address where this fault occured which is basically stored in the kernel stack. 
+
+Pasting the crash output returned:
+init: starting sh
+$ wrprotect
+pid 3 wrprotect: trap 14 err 7 on cpu 1 eip 0x28 addr 0x3000--kill proc
+is trying to access a write protected page at: 0x3000, ip: 0x28

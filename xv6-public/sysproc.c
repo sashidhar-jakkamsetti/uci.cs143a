@@ -105,7 +105,7 @@ sys_wrprotect(void)
   struct proc *curproc = myproc();
 
   a = (char*)PGROUNDDOWN((uint)addr);
-  last = (char*)PGROUNDDOWN(((uint)addr) + size - 1);
+  last = (char*)PGROUNDDOWN(((uint)addr) + size);
   for(;;){
     if((pte = walkpgdir(curproc->pgdir, a, 0)) == 0)
       return -1;

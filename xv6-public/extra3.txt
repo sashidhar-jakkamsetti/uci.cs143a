@@ -1,0 +1,80 @@
+To unprotect the write-protect page we need to walk through the page table to get the page table entry 
+corresponding to the faulting linear address returned by rcr2() and set the write permission back (last 
+few lines in the below code).
+
+trap.c: line 95 - 131
+    // Walk through the pd and get the failing address pte
+    pte_t *pte;
+    pte = walkpgdir(myproc()->pgdir, (void *)rcr2(), 0);
+    // Verfiy that page fault caused at this pte is due to page protection
+    if(!(*pte & PTE_W))
+    {
+      // Print the crash info
+      cprintf("is trying to access a write protected page at: 0x%x, ip: 0x%x\n", 
+              rcr2(), tf->eip);
+      // Print backtrace
+      cprintf("program backtrace:\n");
+      cprintf("eax:0x%x\n", tf->eax);
+      cprintf("ebx:0x%x\n", tf->ebx);
+      cprintf("ecx:0x%x\n", tf->ecx);
+      cprintf("edx:0x%x\n", tf->edx);
+      cprintf("esi:0x%x\n", tf->esi);
+      cprintf("edi:0x%x\n", tf->edi);
+      cprintf("esp:0x%x\n", tf->esp);
+      cprintf("eip:0x%x\n", tf->eip);
+      cprintf("ebp:0x%x\n", tf->ebp);
+      
+      // Print the values stored in the stack until the previous function return address
+      char* sprinter = (char *)tf->esp;
+      int i = 0;
+      do
+      {
+        sprinter += 4;
+        cprintf("#%d  0x%x\n", i++, *sprinter);
+      }while(sprinter != ((char *)tf->ebp + 4));
+
+      // Re-enable the write permissions
+      *pte = *pte | PTE_W;
+      // Break here to not to set the myproc()->killed, making the program continue
+      break;
+    }
+    myproc()->killed = 1;
+
+Then to resume the execution of the current process, we should not set the myproc()->killed. Therefore, once the 
+trap and interrupt handler completed executing, the control of the program will context switch back to the original 
+process by poping out the saved eip and cs and other process values. Otherwise, the current process would have been 
+exited. So, adding break at the end of the default case will suffice to make the kernel continue the program.
+
+wrprotect.c: line 17 - 20
+    // Should give an error
+    char *paddr = saddr;
+    *paddr = 1;
+    // And continue once the page is made writable
+    printf(1, "Program resumed. paddr has value: %d\n", *paddr);
+
+    exit();
+
+This program will now give the below output:
+$ wrprotect
+pid 3 wrprotect: trap 14 err 7 on cpu 1 eip 0x28 addr 0x3000--kill proc
+is trying to access a write protected page at: 0x3000, ip: 0x28
+program backtrace:
+eax:0x0
+ebx:0x3000
+ecx:0x1940
+edx:0xbfac
+esi:0x0
+edi:0x0
+esp:0x2fc0
+eip:0x28
+ebp:0x2fdc
+#0  0x64
+#1  0x0
+#2  0x0
+#3  0x0
+#4  0x0
+#5  0xffffffa8
+#6  0xffffffc8
+#7  0xffffffff
+Program resumed. paddr has value: 1
+$ 

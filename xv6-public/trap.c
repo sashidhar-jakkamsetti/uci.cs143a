@@ -91,6 +91,42 @@ trap(struct trapframe *tf)
             "eip 0x%x addr 0x%x--kill proc\n",
             myproc()->pid, myproc()->name, tf->trapno,
             tf->err, cpuid(), tf->eip, rcr2());
+    
+    // Walk through the pd and get the failing address pte
+    pte_t *pte;
+    pte = walkpgdir(myproc()->pgdir, (void *)rcr2(), 0);
+    // Verfiy that page fault caused at this pte is due to page protection
+    if(!(*pte & PTE_W))
+    {
+      // Print the crash info
+      cprintf("is trying to access a write protected page at: 0x%x, ip: 0x%x\n", 
+              rcr2(), tf->eip);
+      // Print backtrace
+      cprintf("program backtrace:\n");
+      cprintf("eax:0x%x\n", tf->eax);
+      cprintf("ebx:0x%x\n", tf->ebx);
+      cprintf("ecx:0x%x\n", tf->ecx);
+      cprintf("edx:0x%x\n", tf->edx);
+      cprintf("esi:0x%x\n", tf->esi);
+      cprintf("edi:0x%x\n", tf->edi);
+      cprintf("esp:0x%x\n", tf->esp);
+      cprintf("eip:0x%x\n", tf->eip);
+      cprintf("ebp:0x%x\n", tf->ebp);
+      
+      // Print the values stored in the stack until the previous function return address
+      char* sprinter = (char *)tf->esp;
+      int i = 0;
+      do
+      {
+        sprinter += 4;
+        cprintf("#%d  0x%x\n", i++, *sprinter);
+      }while(sprinter != ((char *)tf->ebp + 4));
+
+      // Re-enable the write permissions
+      *pte = *pte | PTE_W;
+      // Break here to not to set the myproc()->killed, making the program continue
+      break;
+    }
     myproc()->killed = 1;
   }
 
