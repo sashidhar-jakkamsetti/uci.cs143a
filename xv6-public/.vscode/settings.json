@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "bitset": "c",
+        "istream": "c",
+        "*.tcc": "c"
+    }
+}
