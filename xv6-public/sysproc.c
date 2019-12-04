@@ -114,5 +114,6 @@ sys_wrprotect(void)
       break;
     a += PGSIZE;
   }
+  lcr3(V2P(myproc()->pgdir)); 
   return 0;
 }
