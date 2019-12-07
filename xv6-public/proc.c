@@ -532,3 +532,106 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+int
+thread_create(void(*fcn)(void*), void *arg, void*stack)
+{
+  int i, pid;
+  struct proc *np;
+  struct proc *proc = myproc();
+  //if((uint)stack%PGSIZE)
+  //return -1;
+  // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;  
+  
+  np->sz = proc->sz;
+  np->parent = proc;
+  *np->tf = *proc->tf;
+  np->pgdir=proc->pgdir;
+  np->isthread = 1;
+
+  // Clear %eax so that fork returns 0 in the child.temp
+  np->tf->eax = 0;
+  np->tf->eip=(uint)fcn;
+  np->tf->esp=(uint)(stack+PGSIZE-sizeof(arg));
+  *(uint*)(np->tf->esp)=(uint)arg;
+  *(uint*)(np->tf->esp-4)=0xffffffff;
+  np->tf->esp=np->tf->esp -4;
+  np->tf->ebp=np->tf->esp;
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  pid = np->pid;
+  acquire(&ptable.lock);
+  np->state = RUNNABLE;
+  release(&ptable.lock);
+  return pid;
+}
+
+int
+thread_join(void)
+{
+  struct proc *p;
+  int havethreads, pid;
+  struct proc *curproc = myproc();
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havethreads = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc||p->pgdir!=curproc->pgdir||p->isthread==0)
+        continue;
+      havethreads = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        
+        release(&ptable.lock);
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havethreads || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
+}
+
+void
+thread_exit(void)
+{
+   struct proc *proc = myproc();
+   int fd;
+
+	//cprintf("thread exit called\n");
+	if (!proc->isthread) {
+		return;
+	}
+	for (fd = 0; fd<NOFILE; fd++) {
+		proc->ofile[fd] = 0;
+	}
+	proc->cwd = 0;
+
+	acquire(&ptable.lock);
+		
+	wakeup1(proc->parent);
+	proc->state = ZOMBIE;
+	sched();
+  panic("zombie thread exit");
+}

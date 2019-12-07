@@ -117,3 +117,31 @@ sys_wrprotect(void)
   lcr3(V2P(myproc()->pgdir)); 
   return 0;
 }
+
+int
+sys_thread_create(void)
+{
+  void (*fcn)(void*);
+  void *arg;
+  void *stack;
+
+  if(argptr(0, (void*)&fcn, sizeof(void(*)(void*))) < 0 || 
+      argptr(1, (void*)&arg, sizeof(void*)) < 0 || 
+        argptr(2, (void*)&stack, PGSIZE) < 0)
+    return -1;
+
+  return thread_create(fcn, arg, stack);
+}
+
+int
+sys_thread_join(void)
+{
+  return thread_join();
+}
+
+int
+sys_thread_exit(void)
+{
+  thread_exit();
+  return 0;
+}

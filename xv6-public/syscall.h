@@ -21,3 +21,6 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_wrprotect 22
+#define SYS_thread_create 23
+#define SYS_thread_join 24
+#define SYS_thread_exit 25

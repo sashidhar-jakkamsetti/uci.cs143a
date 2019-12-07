@@ -24,6 +24,9 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int wrprotect(void *addr, int size);
+int thread_create(void(*fcn)(void*), void *arg, void *stack);
+int thread_join(void);
+int thread_exit(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
