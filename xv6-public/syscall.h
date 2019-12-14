@@ -24,3 +24,5 @@
 #define SYS_thread_create 23
 #define SYS_thread_join 24
 #define SYS_thread_exit 25
+#define SYS_cv_sleep 26
+#define SYS_cv_wakeup 27

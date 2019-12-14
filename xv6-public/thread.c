@@ -9,11 +9,19 @@ struct balance
     int amount;
 };
 
-
 struct thread_spinlock
 {
   uint locked;
 };
+
+struct thread_mutex
+{
+  uint locked;
+};
+
+struct thread_spinlock lock;
+struct thread_mutex mutex;
+
 
 void thread_spin_init(struct thread_spinlock *lk)
 {
@@ -30,13 +38,6 @@ void thread_spin_unlock(struct thread_spinlock *lk)
   asm volatile("movl $0, %0" : "+m" (lk->locked) : );
 }
 
-struct thread_spinlock lock;
-
-struct thread_mutex
-{
-  uint locked;
-};
-
 void thread_mutex_init(struct thread_mutex *lk)
 {
   lk->locked=0;
@@ -52,8 +53,6 @@ void thread_mutex_unlock(struct thread_mutex *lk)
 {
   asm volatile("movl $0, %0" : "+m" (lk->locked) : );
 }
-
-struct thread_mutex mutex;
 
 volatile int total_balance = 0;
 
@@ -100,7 +99,7 @@ int main(int argc, char *argv[])
 
   struct balance b1 = {"b1", 3200};
   struct balance b2 = {"b2", 2800};
- 
+  
   void *s1, *s2;
   int t1, t2, r1, r2;
 

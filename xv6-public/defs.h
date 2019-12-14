@@ -123,6 +123,8 @@ void            yield(void);
 int             thread_create(void(*)(void*), void*, void*);
 int             thread_join(void);
 void            thread_exit(void);
+void            cv_sleep(void*);
+void            cv_wakeup(void*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -13,6 +13,7 @@ sys_fork(void)
   return fork();
 }
 
+
 int
 sys_exit(void)
 {
@@ -143,5 +144,23 @@ int
 sys_thread_exit(void)
 {
   thread_exit();
+  return 0;
+}
+
+int
+sys_cv_sleep(void)
+{
+  void *chan;
+  argptr(0, (void*)&chan, sizeof(*chan));
+  cv_sleep(chan);
+  return 0;
+}
+
+int
+sys_cv_wakeup(void)
+{
+  void *chan;
+  argptr(0, (void*)&chan, sizeof(*chan));
+  cv_wakeup(chan);
   return 0;
 }
