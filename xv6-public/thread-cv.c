@@ -64,11 +64,21 @@ struct q
    void *ptr;
 };
 
+struct payload 
+{
+  struct q *q;
+  void *p;
+};
+
 
 // Thread 1 (sender)
 void
-send(struct q *q, void *p)
+send(void*arg)
 {
+  struct payload *payl=(struct payload*)arg;
+  struct q* q=(struct q*)payl->q;
+  void* p=(void*)payl->p;
+
   thread_mutex_lock(&q->m);
 
   // wait for the payload pipe to be empty
@@ -86,8 +96,10 @@ send(struct q *q, void *p)
 
 // Thread 2 (receiver)
 void
-recv(struct q *q)
+recv(void*arg)
 {
+  struct payload *payl=(struct payload*)arg;
+  struct q*q=(struct q*)payl->q;
   void *p;
 
   thread_mutex_lock(&q->m);
@@ -106,30 +118,24 @@ recv(struct q *q)
   return;
 }
 
-struct payload 
-{
-  struct q *q;
-  void *p;
-};
-
 int main(int argc, char *argv[]) 
 {
   void* p = "payload";
-  struct q *q;
+  struct q q;
 
-  q->ptr=0;
+  q.ptr=0;
   void *s1, *s2;
   
-  thread_cond_init(&q->cv);
-  thread_mutex_init(&q->m);
+  thread_cond_init(&q.cv);
+  thread_mutex_init(&q.m);
 
   struct payload payl = {(struct q*)&q, (void *)p};
 
   s1 = malloc(4096);
   s2 = malloc(4096);
 
-  thread_create(recv, (struct payload*)&payl, s1);
-  thread_create(send, (struct payload*)&payl, s2); 
+  thread_create(recv, (void*)&payl, s1);
+  thread_create(send, (void*)&payl, s2); 
 
   thread_join();
   thread_join();
