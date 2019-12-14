@@ -66,7 +66,7 @@ struct q
 
 
 // Thread 1 (sender)
-void*
+void
 send(struct q *q, void *p)
 {
   thread_mutex_lock(&q->m);
@@ -85,7 +85,7 @@ send(struct q *q, void *p)
 
 
 // Thread 2 (receiver)
-void*
+void
 recv(struct q *q)
 {
   void *p;
@@ -123,13 +123,13 @@ int main(int argc, char *argv[])
   thread_cond_init(&q->cv);
   thread_mutex_init(&q->m);
 
-  struct payload payload = {&q, p};
+  struct payload payl = {(struct q*)&q, (void *)p};
 
   s1 = malloc(4096);
   s2 = malloc(4096);
 
-  thread_create(recv, (void*)&payload, s1);
-  thread_create(send, (void*)&payload, s2); 
+  thread_create(recv, (struct payload*)&payl, s1);
+  thread_create(send, (struct payload*)&payl, s2); 
 
   thread_join();
   thread_join();
